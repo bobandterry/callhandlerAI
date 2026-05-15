@@ -18,7 +18,6 @@ import { RecommendedResourcesPanel } from "./RecommendedResourcesPanel";
 import { AnnotationOverlay } from "./AnnotationOverlay";
 import { PanelOverlayCard } from "./PanelOverlayCard";
 import { DataFlowBanner } from "./DataFlowBanner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PANEL_DESCRIPTIONS = {
   transcript:
@@ -28,9 +27,7 @@ const PANEL_DESCRIPTIONS = {
   classification:
     "Real-time AI-generated tags identifying risk factors, abuse types, and caller indicators. Updates automatically as new information emerges. Severity assessment always remains with the handler.",
   resources:
-    "Local services, referral pathways, and practical tools surfaced based on the call classification. Includes emergency accommodation, specialist referrals, and support organisations where relevant.",
-  aiPanels:
-    "Two AI panels in one view: Call Classification (risk factor tags) and Recommended Resources (local services and referrals). Both update automatically as the call develops.",
+    "Local services, referral pathways, and practical tools surfaced based on the call classification. Urgent items surface to the top automatically.",
 };
 
 export function CallHandlerDashboard() {
@@ -137,8 +134,8 @@ export function CallHandlerDashboard() {
 
       <DataFlowBanner isVisible={!allRevealed} />
 
-      {/* Desktop layout — hidden on mobile */}
-      <div className="relative hidden flex-1 overflow-hidden md:flex">
+      {/* Main layout */}
+      <div className="relative flex flex-1 overflow-hidden">
         {/* Left: Transcript ~20% */}
         <aside className="relative flex w-[20%] min-w-[200px] flex-col overflow-hidden border-r border-border">
           <TranscriptPanel
@@ -176,12 +173,14 @@ export function CallHandlerDashboard() {
 
         {/* Right: Classification + Recommendations ~35% */}
         <aside className="flex w-[35%] min-w-[280px] flex-col overflow-hidden">
-          <div className="relative max-h-[45%] overflow-y-auto border-b border-border shrink-0">
-            <ClassificationPanel
-              tags={tags}
-              isProcessing={panelProcessing.classification}
-              updatedTagIds={updatedTagIds}
-            />
+          <div className="relative max-h-[45%] min-h-[280px] border-b border-border shrink-0">
+            <div className="overflow-y-auto max-h-full">
+              <ClassificationPanel
+                tags={tags}
+                isProcessing={panelProcessing.classification}
+                updatedTagIds={updatedTagIds}
+              />
+            </div>
             <PanelOverlayCard
               icon={<Tags className="h-5 w-5" />}
               title="Call Classification"
@@ -190,7 +189,7 @@ export function CallHandlerDashboard() {
               onReveal={() => handleReveal("classification")}
             />
           </div>
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-[220px] flex-1 flex-col overflow-hidden">
             <RecommendedResourcesPanel
               resources={resources}
               isProcessing={panelProcessing.resources}
@@ -206,71 +205,6 @@ export function CallHandlerDashboard() {
         </aside>
 
         <AnnotationOverlay isVisible={showAnnotations} />
-      </div>
-
-      {/* Mobile layout — shown below md */}
-      <div className="flex flex-1 flex-col overflow-hidden md:hidden">
-        <Tabs defaultValue="guidance" className="flex flex-1 flex-col overflow-hidden">
-          <TabsList className="mx-3 mt-2 grid grid-cols-3 shrink-0">
-            <TabsTrigger value="transcript">Transcript</TabsTrigger>
-            <TabsTrigger value="guidance">Guidance</TabsTrigger>
-            <TabsTrigger value="classification">AI Panels</TabsTrigger>
-          </TabsList>
-          <TabsContent value="transcript" className="relative flex-1 overflow-hidden mt-0">
-            <TranscriptPanel
-              lines={transcript}
-              currentStage={currentStage}
-              isProcessing={panelProcessing.guidance}
-              isLastStage={currentStage >= TOTAL_STAGES - 1}
-              canAdvance={allRevealed}
-              onNextStage={advanceStage}
-            />
-            <PanelOverlayCard
-              icon={<MessageSquare className="h-5 w-5" />}
-              title="Call Transcript"
-              description={PANEL_DESCRIPTIONS.transcript}
-              isRevealed={revealedPanels.has("transcript")}
-              onReveal={() => handleReveal("transcript")}
-            />
-          </TabsContent>
-          <TabsContent value="guidance" className="relative flex-1 overflow-hidden mt-0">
-            <ExpertGuidancePanel
-              cards={guidanceCards}
-              currentStage={currentStage}
-              isProcessing={panelProcessing.guidance}
-            />
-            <PanelOverlayCard
-              icon={<BookOpen className="h-5 w-5" />}
-              title="Expert Guidance"
-              description={PANEL_DESCRIPTIONS.guidance}
-              isRevealed={revealedPanels.has("guidance")}
-              onReveal={() => handleReveal("guidance")}
-            />
-          </TabsContent>
-          <TabsContent value="classification" className="relative flex-1 overflow-y-auto mt-0">
-            <div className="border-b border-border">
-              <ClassificationPanel
-                tags={tags}
-                isProcessing={panelProcessing.classification}
-                updatedTagIds={updatedTagIds}
-              />
-            </div>
-            <RecommendedResourcesPanel
-              resources={resources}
-              isProcessing={panelProcessing.resources}
-            />
-            <PanelOverlayCard
-              icon={<Tags className="h-5 w-5" />}
-              title="AI Support Panels"
-              description={PANEL_DESCRIPTIONS.aiPanels}
-              isRevealed={
-                revealedPanels.has("classification") &&
-                revealedPanels.has("resources")
-              }
-              onReveal={() => handleReveal("classification", "resources")}
-            />
-          </TabsContent>
-        </Tabs>
       </div>
 
       {/* Toast notification */}

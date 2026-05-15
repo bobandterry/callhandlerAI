@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Bookmark, Copy, ExternalLink, LayoutList, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { type Resource, type ResourceType } from "@/lib/call-handler-data";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +25,9 @@ export function RecommendedResourcesPanel({
   resources,
   isProcessing,
 }: RecommendedResourcesPanelProps) {
+  // Build list with group dividers injected between type boundaries
+  const items = buildGroupedItems(resources);
+
   return (
     <motion.div
       animate={{ opacity: isProcessing ? [1, 0.5, 1] : 1 }}
@@ -45,7 +47,7 @@ export function RecommendedResourcesPanel({
           </h2>
         </div>
         <p className="mt-0.5 text-[10px] text-muted-foreground">
-          Based on live classification — updated as the call develops
+          Highest priority first — updated as the call develops
         </p>
       </div>
 
@@ -58,13 +60,28 @@ export function RecommendedResourcesPanel({
         ) : (
           <div className="flex flex-col gap-2.5">
             <AnimatePresence initial={false}>
-              {resources.map((resource, index) => (
-                <ResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  index={index}
-                />
-              ))}
+              {items.map((item) =>
+                item.type === "divider" ? (
+                  <motion.div
+                    key={item.key}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2 pt-0.5"
+                  >
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                      {item.label}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </motion.div>
+                ) : (
+                  <ResourceCard
+                    key={item.resource.id}
+                    resource={item.resource}
+                    index={item.index}
+                  />
+                )
+              )}
             </AnimatePresence>
           </div>
         )}
@@ -80,13 +97,46 @@ export function RecommendedResourcesPanel({
   );
 }
 
-function ResourceCard({
-  resource,
-  index,
-}: {
-  resource: Resource;
-  index: number;
-}) {
+// ── Group label map ──────────────────────────────────────────────────────────
+
+const GROUP_LABELS: Record<ResourceType, string> = {
+  "Crisis accommodation": "Crisis",
+  "Risk assessment": "Risk assessment",
+  "Partner referral": "Referrals",
+  "Legal guidance": "Legal",
+  "Financial guidance": "Financial",
+  "Protocol guide": "Protocols",
+  "Internal resource": "Internal",
+};
+
+type ListItem =
+  | { type: "resource"; resource: Resource; index: number }
+  | { type: "divider"; key: string; label: string };
+
+function buildGroupedItems(resources: Resource[]): ListItem[] {
+  const items: ListItem[] = [];
+  let lastGroupKey: string | null = null;
+  let cardIndex = 0;
+
+  for (const resource of resources) {
+    const groupKey = resource.isElevated ? "__elevated__" : resource.type;
+    if (groupKey !== lastGroupKey && lastGroupKey !== null) {
+      items.push({
+        type: "divider",
+        key: `div-${groupKey}`,
+        label: resource.isElevated ? "Urgent" : GROUP_LABELS[resource.type],
+      });
+    }
+    lastGroupKey = groupKey;
+    items.push({ type: "resource", resource, index: cardIndex++ });
+  }
+
+  return items;
+}
+
+// ── Resource card ────────────────────────────────────────────────────────────
+
+function ResourceCard({ resource, index }: { resource: Resource; index: number }) {
   const isElevated = resource.isElevated === true;
 
   return (
@@ -96,9 +146,7 @@ function ResourceCard({
       transition={{ delay: Math.min(index * 0.04, 0.2), duration: 0.22 }}
       className={cn(
         "rounded-lg border p-3 transition-shadow",
-        isElevated
-          ? "border-primary bg-primary/5 shadow-sm"
-          : "border-border bg-card"
+        isElevated ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card"
       )}
     >
       {isElevated && (
@@ -135,11 +183,12 @@ function ResourceCard({
           </p>
         </div>
         <div className="shrink-0">
-          {isElevated ? (
-            <Bookmark className="h-3.5 w-3.5 text-primary mt-0.5" />
-          ) : (
-            <Bookmark className="h-3.5 w-3.5 text-muted-foreground/40 mt-0.5" />
-          )}
+          <Bookmark
+            className={cn(
+              "h-3.5 w-3.5 mt-0.5",
+              isElevated ? "text-primary" : "text-muted-foreground/40"
+            )}
+          />
         </div>
       </div>
 

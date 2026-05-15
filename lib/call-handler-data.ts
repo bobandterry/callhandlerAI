@@ -710,8 +710,26 @@ export function getTagsAtStage(stageIndex: number): ClassificationTag[] {
   return Array.from(tags.values());
 }
 
+const RESOURCE_TYPE_PRIORITY: Record<ResourceType, number> = {
+  "Crisis accommodation": 0,
+  "Risk assessment": 1,
+  "Partner referral": 2,
+  "Legal guidance": 3,
+  "Financial guidance": 4,
+  "Protocol guide": 5,
+  "Internal resource": 6,
+};
+
 export function getResourcesAtStage(stageIndex: number): Resource[] {
-  return STAGES.slice(0, stageIndex + 1).flatMap((s) => s.newResources);
+  const resources = STAGES.slice(0, stageIndex + 1).flatMap((s) => s.newResources);
+  return resources.sort((a, b) => {
+    if (a.isElevated && !b.isElevated) return -1;
+    if (!a.isElevated && b.isElevated) return 1;
+    const pa = RESOURCE_TYPE_PRIORITY[a.type];
+    const pb = RESOURCE_TYPE_PRIORITY[b.type];
+    if (pa !== pb) return pa - pb;
+    return a.appearsAtStage - b.appearsAtStage;
+  });
 }
 
 export function getTranscriptAtStage(stageIndex: number): TranscriptLine[] {
