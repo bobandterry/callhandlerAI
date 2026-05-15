@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Info, Radio, ShieldAlert } from "lucide-react";
+import { Info, Radio, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CASE_REF } from "@/lib/call-handler-data";
 import { formatDuration } from "@/lib/call-handler-data";
@@ -13,7 +13,6 @@ interface HeaderBarProps {
   elapsedSeconds: number;
   isProcessing: boolean;
   showAnnotations: boolean;
-  onNextStage: () => void;
   onToggleAnnotations: () => void;
 }
 
@@ -23,10 +22,8 @@ export function HeaderBar({
   elapsedSeconds,
   isProcessing,
   showAnnotations,
-  onNextStage,
   onToggleAnnotations,
 }: HeaderBarProps) {
-  const isLastStage = currentStage >= totalStages - 1;
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-sidebar px-4">
@@ -100,25 +97,6 @@ export function HeaderBar({
           <span className="hidden sm:inline">How these work together</span>
         </Button>
 
-        {/* Next stage button */}
-        <Button
-          onClick={onNextStage}
-          disabled={isProcessing || isLastStage}
-          size="sm"
-          className={cn(
-            "h-8 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40",
-            isLastStage && "opacity-30"
-          )}
-        >
-          {isLastStage ? (
-            <span className="text-xs">Call complete</span>
-          ) : (
-            <>
-              <span className="text-xs">Next stage</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </>
-          )}
-        </Button>
       </div>
     </header>
   );

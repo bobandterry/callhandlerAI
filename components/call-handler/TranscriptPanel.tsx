@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { type TranscriptLine } from "@/lib/call-handler-data";
 import { cn } from "@/lib/utils";
 
@@ -9,12 +11,18 @@ interface TranscriptPanelProps {
   lines: TranscriptLine[];
   currentStage: number;
   isProcessing: boolean;
+  isLastStage: boolean;
+  canAdvance: boolean;
+  onNextStage: () => void;
 }
 
 export function TranscriptPanel({
   lines,
   currentStage,
   isProcessing,
+  isLastStage,
+  canAdvance,
+  onNextStage,
 }: TranscriptPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +107,28 @@ export function TranscriptPanel({
           </AnimatePresence>
           <div ref={bottomRef} />
         </div>
+      </div>
+
+      {/* Continue conversation button */}
+      <div className="shrink-0 border-t border-border p-3">
+        <Button
+          onClick={onNextStage}
+          disabled={isProcessing || isLastStage || !canAdvance}
+          size="sm"
+          className={cn(
+            "w-full gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40",
+            isLastStage && "opacity-30"
+          )}
+        >
+          {isLastStage ? (
+            <span className="text-xs">Call complete</span>
+          ) : (
+            <>
+              <span className="text-xs">Continue conversation</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </>
+          )}
+        </Button>
       </div>
     </motion.div>
   );

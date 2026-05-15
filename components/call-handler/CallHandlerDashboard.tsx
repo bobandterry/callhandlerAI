@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { BookOpen, FileText, MessageSquare, Tags } from "lucide-react";
 import {
   STAGES,
   TOTAL_STAGES,
@@ -15,7 +16,22 @@ import { ExpertGuidancePanel } from "./ExpertGuidancePanel";
 import { ClassificationPanel } from "./ClassificationPanel";
 import { RecommendedResourcesPanel } from "./RecommendedResourcesPanel";
 import { AnnotationOverlay } from "./AnnotationOverlay";
+import { PanelOverlayCard } from "./PanelOverlayCard";
+import { DataFlowBanner } from "./DataFlowBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const PANEL_DESCRIPTIONS = {
+  transcript:
+    "A live rolling transcript of the call between the handler and caller. Each line is added as the conversation progresses — the three AI panels on the right are driven by this transcript in real time.",
+  guidance:
+    "Suggested questions, communication approaches, and safety prompts drawn from Refuge's knowledge base. Cards update with each stage of the call to keep the handler supported throughout.",
+  classification:
+    "Real-time AI-generated tags identifying risk factors, abuse types, and caller indicators. Updates automatically as new information emerges. Severity assessment always remains with the handler.",
+  resources:
+    "Local services, referral pathways, and practical tools surfaced based on the call classification. Includes emergency accommodation, specialist referrals, and support organisations where relevant.",
+  aiPanels:
+    "Two AI panels in one view: Call Classification (risk factor tags) and Recommended Resources (local services and referrals). Both update automatically as the call develops.",
+};
 
 export function CallHandlerDashboard() {
   const [currentStage, setCurrentStage] = useState(0);
@@ -29,6 +45,21 @@ export function CallHandlerDashboard() {
   const [toastMessage, setToastMessage] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [updatedTagIds, setUpdatedTagIds] = useState<Set<string>>(new Set());
+  const [revealedPanels, setRevealedPanels] = useState<Set<string>>(new Set());
+
+  const allRevealed =
+    revealedPanels.has("transcript") &&
+    revealedPanels.has("guidance") &&
+    revealedPanels.has("classification") &&
+    revealedPanels.has("resources");
+
+  const handleReveal = (...ids: string[]) => {
+    setRevealedPanels((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   const isProcessing =
     panelProcessing.guidance ||
@@ -36,7 +67,7 @@ export function CallHandlerDashboard() {
     panelProcessing.resources;
 
   const advanceStage = () => {
-    if (currentStage >= TOTAL_STAGES - 1 || isProcessing) return;
+    if (currentStage >= TOTAL_STAGES - 1 || isProcessing || !allRevealed) return;
 
     const nextStage = currentStage + 1;
     const incomingUpdates = new Set(
@@ -69,12 +100,7 @@ export function CallHandlerDashboard() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "ArrowRight" &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !e.altKey
-      ) {
+      if (e.key === "ArrowRight" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         advanceStage();
       }
     };
@@ -105,44 +131,76 @@ export function CallHandlerDashboard() {
           elapsedSeconds={elapsedSeconds}
           isProcessing={isProcessing}
           showAnnotations={showAnnotations}
-          onNextStage={advanceStage}
           onToggleAnnotations={() => setShowAnnotations((v) => !v)}
         />
       </div>
 
+      <DataFlowBanner isVisible={!allRevealed} />
+
       {/* Desktop layout — hidden on mobile */}
       <div className="relative hidden flex-1 overflow-hidden md:flex">
         {/* Left: Transcript ~20% */}
-        <aside className="flex w-[20%] min-w-[200px] flex-col overflow-hidden border-r border-border">
+        <aside className="relative flex w-[20%] min-w-[200px] flex-col overflow-hidden border-r border-border">
           <TranscriptPanel
             lines={transcript}
             currentStage={currentStage}
             isProcessing={panelProcessing.guidance}
+            isLastStage={currentStage >= TOTAL_STAGES - 1}
+            canAdvance={allRevealed}
+            onNextStage={advanceStage}
+          />
+          <PanelOverlayCard
+            icon={<MessageSquare className="h-5 w-5" />}
+            title="Call Transcript"
+            description={PANEL_DESCRIPTIONS.transcript}
+            isRevealed={revealedPanels.has("transcript")}
+            onReveal={() => handleReveal("transcript")}
           />
         </aside>
 
         {/* Centre: Expert Guidance ~45% */}
-        <main className="flex flex-1 flex-col overflow-hidden border-r border-border">
+        <main className="relative flex flex-1 flex-col overflow-hidden border-r border-border">
           <ExpertGuidancePanel
             cards={guidanceCards}
             currentStage={currentStage}
             isProcessing={panelProcessing.guidance}
           />
+          <PanelOverlayCard
+            icon={<BookOpen className="h-5 w-5" />}
+            title="Expert Guidance"
+            description={PANEL_DESCRIPTIONS.guidance}
+            isRevealed={revealedPanels.has("guidance")}
+            onReveal={() => handleReveal("guidance")}
+          />
         </main>
 
         {/* Right: Classification + Recommendations ~35% */}
         <aside className="flex w-[35%] min-w-[280px] flex-col overflow-hidden">
-          <div className="max-h-[45%] overflow-y-auto border-b border-border shrink-0">
+          <div className="relative max-h-[45%] overflow-y-auto border-b border-border shrink-0">
             <ClassificationPanel
               tags={tags}
               isProcessing={panelProcessing.classification}
               updatedTagIds={updatedTagIds}
             />
+            <PanelOverlayCard
+              icon={<Tags className="h-5 w-5" />}
+              title="Call Classification"
+              description={PANEL_DESCRIPTIONS.classification}
+              isRevealed={revealedPanels.has("classification")}
+              onReveal={() => handleReveal("classification")}
+            />
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <RecommendedResourcesPanel
               resources={resources}
               isProcessing={panelProcessing.resources}
+            />
+            <PanelOverlayCard
+              icon={<FileText className="h-5 w-5" />}
+              title="Recommended Resources"
+              description={PANEL_DESCRIPTIONS.resources}
+              isRevealed={revealedPanels.has("resources")}
+              onReveal={() => handleReveal("resources")}
             />
           </div>
         </aside>
@@ -158,21 +216,38 @@ export function CallHandlerDashboard() {
             <TabsTrigger value="guidance">Guidance</TabsTrigger>
             <TabsTrigger value="classification">AI Panels</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="flex-1 overflow-hidden mt-0">
+          <TabsContent value="transcript" className="relative flex-1 overflow-hidden mt-0">
             <TranscriptPanel
               lines={transcript}
               currentStage={currentStage}
               isProcessing={panelProcessing.guidance}
+              isLastStage={currentStage >= TOTAL_STAGES - 1}
+              canAdvance={allRevealed}
+              onNextStage={advanceStage}
+            />
+            <PanelOverlayCard
+              icon={<MessageSquare className="h-5 w-5" />}
+              title="Call Transcript"
+              description={PANEL_DESCRIPTIONS.transcript}
+              isRevealed={revealedPanels.has("transcript")}
+              onReveal={() => handleReveal("transcript")}
             />
           </TabsContent>
-          <TabsContent value="guidance" className="flex-1 overflow-hidden mt-0">
+          <TabsContent value="guidance" className="relative flex-1 overflow-hidden mt-0">
             <ExpertGuidancePanel
               cards={guidanceCards}
               currentStage={currentStage}
               isProcessing={panelProcessing.guidance}
             />
+            <PanelOverlayCard
+              icon={<BookOpen className="h-5 w-5" />}
+              title="Expert Guidance"
+              description={PANEL_DESCRIPTIONS.guidance}
+              isRevealed={revealedPanels.has("guidance")}
+              onReveal={() => handleReveal("guidance")}
+            />
           </TabsContent>
-          <TabsContent value="classification" className="flex-1 overflow-y-auto mt-0">
+          <TabsContent value="classification" className="relative flex-1 overflow-y-auto mt-0">
             <div className="border-b border-border">
               <ClassificationPanel
                 tags={tags}
@@ -183,6 +258,16 @@ export function CallHandlerDashboard() {
             <RecommendedResourcesPanel
               resources={resources}
               isProcessing={panelProcessing.resources}
+            />
+            <PanelOverlayCard
+              icon={<Tags className="h-5 w-5" />}
+              title="AI Support Panels"
+              description={PANEL_DESCRIPTIONS.aiPanels}
+              isRevealed={
+                revealedPanels.has("classification") &&
+                revealedPanels.has("resources")
+              }
+              onReveal={() => handleReveal("classification", "resources")}
             />
           </TabsContent>
         </Tabs>
